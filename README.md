@@ -16,9 +16,17 @@ win until it pays.
    while they are still open — smily corrects those on-chain, in the same
    turn (see [docs/VERIFICATION.md](docs/VERIFICATION.md)).
 2. **Agent endpoint** (`src/server.mjs`) — `GET /health`, `GET /api/status`,
-   `POST /agent` with a `verify-mint` task. HMAC-SHA256 signature verified
-   against the raw body *before* parsing; fail-closed on any mismatch or
-   uncertainty. Read-only: it never signs, never mints, never moves funds.
+   `POST /` and `POST /agent` with Agent Games task envelopes. Every
+   response is signed with `x-agent-games-signature` (HMAC-SHA256 over the
+   raw response body, platform secret from `AGENT_GAMES_SECRET`):
+   - `agent-games.preflight.v1` → `{ ok: true, protocolVersion: "v1" }`
+   - `agent-games.proof-gatekeeper.v1` → deterministic APPROVE/REJECT with
+     a reason code, plus a **real Groth16 proof** generated locally with
+     snarkjs against the official gatekeeper circuit
+     (`src/gatekeeper.mjs`; artifacts in `circuits/`, sha256-verified —
+     `npm run circuits` re-downloads them). Fail-closed on any mismatch or
+     uncertainty. Read-only: it never signs, never mints, never moves funds.
+   - `verify-mint` task — on-chain free-mint verification (as before).
 3. **Measured make.fun agent** — real coding-bounty entries, measured before
    submit, top-20 bar or strengthen/skip, never fabricated transcripts.
 
@@ -35,9 +43,15 @@ win until it pays.
 ```bash
 node src/watcher.mjs ./data   # one watcher run (feed + on-chain verify)
 node src/server.mjs            # agent endpoint on :3000 (PORT env)
+npm test                       # 8 tests: watcher, selectors, gatekeeper
+                               # decision matrix, preflight + signing e2e,
+                               # real Groth16 proofs verified locally
 ```
 
-Node >= 18, zero dependencies. BSC RPC: public `bsc-dataseed` endpoints
+Node >= 18. One dependency: `snarkjs@0.7.6` (local Groth16 proving).
+Set `AGENT_GAMES_SECRET` (platform-issued, never committed — see
+`run/agent.env`, 0600) before serving Gatekeeper tasks; without it,
+preflight/gatekeeper answer 500. BSC RPC: public `bsc-dataseed` endpoints
 with fallback; a browser User-Agent (the VM's egress proxy filters others).
 
 ## Live results (verified 16 Nov 2026 ~08:20 WIB)
@@ -56,18 +70,19 @@ with fallback; a browser User-Agent (the VM's egress proxy filters others).
   their free mints were still open on-chain. Full list in
   [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
-## zkVerify (optional plus)
+## zkVerify — Proof Gatekeeper (live since 16 Nov 2026)
 
-Verification is the whole point of smily, and zkVerify is the natural way to
-make a verification checkable: the checkable claim is *"this contract's
-`mintOpen()` returned true at block N"* — a zkTLS-style attestation over a
-real RPC response, verifiable without revealing the full payload. No proof
-is attached yet: this VM has no public IP and its egress proxy blocks every
-free no-account tunnel (trycloudflare 403, localtunnel 403, bore.pub
-unreachable — re-tested 16 Nov 2026), so no public endpoint could be served
-from here and no live Gatekeeper/Steal-the-VFY rounds could be played.
-Agents without zkVerify remain eligible for Wildcard, and this submission is
-honest about that limit instead of faking a proof.
+The agent is registered for Proof Gatekeeper + Steal the VFY and answers
+signed tasks at its public endpoint. Gatekeeper decisions are proven with
+the tournament's own Groth16 circuit (vk_hash
+`0x6b79c6…ad77b0`); the decision logic mirrors the circuit exactly, so a
+wrong decision cannot even produce a witness. The one thing **not** wired:
+Kurier submission to zkVerify mainnet — there is no Kurier API key and no
+funded zkVerify account, so `proof_tx` in responses echoes the task's own
+reference and the platform re-verifies the attached proof itself. Nothing
+here spends anything. Steal the VFY is not playable: no strategy
+commitment was registered before Swiss Round 1, and its policy circuit
+would need the same treatment as the gatekeeper one.
 
 ## Demo
 

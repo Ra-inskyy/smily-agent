@@ -1,0 +1,15 @@
+[Unit]
+Description=smily agent pinggy tunnel (public HTTPS endpoint)
+After=smily-agent.service
+Requires=smily-agent.service
+
+[Service]
+Type=simple
+ExecStart=/home/hatch/workspace/goals/agent-games-creator-track/wildcard/smily-agent/run/pinggy.sh
+Restart=always
+RestartSec=15
+StandardOutput=append:/tmp/pinggy-systemd.log
+StandardError=append:/tmp/pinggy-systemd.log
+
+[Install]
+WantedBy=multi-user.target

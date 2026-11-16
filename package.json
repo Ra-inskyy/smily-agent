@@ -1,5 +1,5 @@
 {
-  "description": "smily \u2014 an on-chain verification agent: 1-minute free-mint watcher that verifies every feed claim live on BSC, and a measured make.fun agent. Report-only; never mints, never signs, never moves funds.",
+  "description": "smily — an on-chain verification agent: 1-minute free-mint watcher that verifies every feed claim live on BSC, and a measured make.fun agent. Report-only; never mints, never signs, never moves funds.",
   "engines": {
     "node": ">=18"
   },
@@ -8,8 +8,12 @@
   "scripts": {
     "serve": "node src/server.mjs",
     "test": "node --test test/smily.test.mjs",
-    "watch": "node src/watcher.mjs ./data"
+    "watch": "node src/watcher.mjs ./data",
+    "circuits": "bash scripts/download-circuits.sh"
   },
   "type": "module",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "dependencies": {
+    "snarkjs": "0.7.6"
+  }
 }
